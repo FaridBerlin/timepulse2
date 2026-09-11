@@ -28,6 +28,7 @@
   const closeBtn = document.getElementById("close-btn");
   const quitCorner = document.getElementById("quit-corner");
   const contextMenu = document.getElementById("context-menu");
+  const contextAlwaysOnTop = document.getElementById("context-always-on-top");
   const contextQuit = document.getElementById("context-quit");
   const contextCancel = document.getElementById("context-cancel");
 
@@ -294,11 +295,42 @@
     quitApp();
   });
 
+  // Keeps the context menu's own "Always on top" label in sync with the
+  // panel checkbox's state (they control the same thing), so whichever
+  // one you used last, the other one shows the right state next time.
+  function updateContextAlwaysOnTopLabel() {
+    contextAlwaysOnTop.textContent = alwaysOnTop.checked
+      ? "✓ Always on top"
+      : "Always on top";
+  }
+
   document.addEventListener("contextmenu", (event) => {
     event.preventDefault();
-    contextMenu.style.left = `${event.clientX}px`;
-    contextMenu.style.top = `${event.clientY}px`;
+    updateContextAlwaysOnTopLabel();
+    // Show it first (off in the corner) so its real size can be measured -
+    // it's a 3-item menu now, and this window is often quite small (just
+    // the clock), so placing it at the raw cursor position could push it
+    // partly outside the window, where the webview simply clips it and it
+    // looks broken/cut off. Clamp it back inside the window bounds instead.
+    contextMenu.style.left = "0px";
+    contextMenu.style.top = "0px";
     contextMenu.classList.remove("hidden");
+    const menuWidth = contextMenu.offsetWidth;
+    const menuHeight = contextMenu.offsetHeight;
+    const maxLeft = Math.max(4, window.innerWidth - menuWidth - 4);
+    const maxTop = Math.max(4, window.innerHeight - menuHeight - 4);
+    contextMenu.style.left = `${Math.min(event.clientX, maxLeft)}px`;
+    contextMenu.style.top = `${Math.min(event.clientY, maxTop)}px`;
+  });
+
+  contextAlwaysOnTop.addEventListener("click", (event) => {
+    event.stopPropagation();
+    alwaysOnTop.checked = !alwaysOnTop.checked;
+    if (currentWindow) {
+      currentWindow.setAlwaysOnTop(alwaysOnTop.checked);
+    }
+    saveSettings();
+    hideContextMenu();
   });
 
   contextQuit.addEventListener("click", (event) => {
