@@ -4,6 +4,7 @@
   const displayS = document.getElementById("segment-s");
   const dateLine = document.getElementById("date-line");
   const display = document.getElementById("display");
+  const digits = document.getElementById("digits");
   const controls = document.getElementById("controls");
   const tabButtons = document.querySelectorAll(".tab-btn");
   const startBtn = document.getElementById("start-btn");
@@ -12,6 +13,7 @@
   const timerInput = document.getElementById("timer-input");
   const colorPicker = document.getElementById("color-picker");
   const colorSwatch = document.getElementById("color-swatch");
+  const sizeSelect = document.getElementById("size-select");
   const bgSelect = document.getElementById("bg-select");
   const bgCustom = document.getElementById("bg-custom");
   const bgCustomSwatch = document.getElementById("bg-custom-swatch");
@@ -39,6 +41,9 @@
   const currentWindow = tauriWindowApi ? tauriWindowApi.getCurrentWindow() : null;
 
   const DEFAULT_TIMER_MS = 5 * 60 * 1000;
+  // Matches minWidth in tauri.conf.json - the settings panel needs at
+  // least this much room even when the clock itself is narrower.
+  const MIN_WINDOW_WIDTH = 260;
 
   let mode = "clock";
   let tickTimer = null;
@@ -220,11 +225,33 @@
   async function fitWindowToContent() {
     if (!currentWindow || !tauriWindowApi || !tauriWindowApi.LogicalSize) return;
     try {
-      const scale = await currentWindow.scaleFactor();
-      const currentLogical = (await currentWindow.innerSize()).toLogical(scale);
       const neededHeight = Math.ceil(appEl.scrollHeight);
+      // Width used to be left alone (the digits were sized in vw, so they
+      // followed the window rather than the other way round). Now that the
+      // Size setting drives the digits, the window has to follow them.
+      // #app is align-items:center, so its children are sized to their own
+      // content rather than stretched to the window - measuring them gives
+      // the width the content actually needs, even when that is wider than
+      // the window currently is.
+      const displayStyle = getComputedStyle(display);
+      const displayPadX =
+        parseFloat(displayStyle.paddingLeft) +
+        parseFloat(displayStyle.paddingRight);
+      // Width is driven by the digits alone. The settings panel is
+      // deliberately NOT measured here: it is width:100%, so measuring it
+      // would just report the window's current width back, and the window
+      // could then never shrink again (going Huge -> Small with the panel
+      // open would leave a huge window around tiny digits). The panel
+      // wraps (flex-wrap on .settings-row) and its color popup is fully
+      // fluid, so it renders fine at whatever width the clock needs.
+      const neededWidth = Math.ceil(
+        Math.max(
+          digits.getBoundingClientRect().width + displayPadX,
+          MIN_WINDOW_WIDTH
+        )
+      );
       await currentWindow.setSize(
-        new tauriWindowApi.LogicalSize(currentLogical.width, neededHeight)
+        new tauriWindowApi.LogicalSize(neededWidth, neededHeight)
       );
     } catch (e) {
       // Resize permission missing or unsupported on this platform - the
@@ -383,6 +410,31 @@
     } else if (event.ctrlKey && event.key.toLowerCase() === "q") {
       quitApp();
     }
+  });
+
+  // Digit heights in logical px. Every other clock metric (colon dots and
+  // their spacing, the date line, the padding around it all) is derived
+  // from this one number in style.css, so the proportions hold at every
+  // size. "Huge" exists for the wall-mounted / large-TV case.
+  const SIZES = {
+    small: 64,
+    medium: 96,
+    large: 144,
+    huge: 208,
+  };
+
+  function applySize(name) {
+    const px = SIZES[name] || SIZES.medium;
+    document.documentElement.style.setProperty("--digit-size", `${px}px`);
+  }
+
+  sizeSelect.addEventListener("change", () => {
+    applySize(sizeSelect.value);
+    saveSettings();
+    // The digits just changed size, so the window has to follow - this is
+    // the one setting that changes the clock's width as well as its
+    // height, which is why fitWindowToContent measures both.
+    fitWindowToContent();
   });
 
   function applyColor(hex) {
@@ -628,6 +680,7 @@
         "timepulse2.settings",
         JSON.stringify({
           mode,
+          size: sizeSelect.value,
           color: colorPicker.value,
           bg: bgSelect.value,
           bgCustom: bgCustom.value,
@@ -647,6 +700,10 @@
       if (!raw) return;
       const saved = JSON.parse(raw);
 
+      if (saved.size && SIZES[saved.size]) {
+        sizeSelect.value = saved.size;
+        applySize(saved.size);
+      }
       if (saved.color) {
         colorPicker.value = saved.color;
         colorSwatch.style.background = saved.color;

@@ -1,5 +1,10 @@
 :root {
   --digit-color: #4ade80;
+  /* Single source of truth for the clock's scale - the Size setting in
+     the panel rewrites just this one value, and every other clock metric
+     below is derived from it, so the proportions stay identical at every
+     size. 96px is "Medium", which is what the old clamp() maxed out at. */
+  --digit-size: 96px;
   --bg-rgb: 15, 23, 42;
   --bg-alpha: 0.9;
 }
@@ -25,6 +30,10 @@ body {
 #app {
   position: relative;
   width: 100%;
+  /* Never let the painted background be narrower than the clock itself,
+     which can happen for a moment while the window is catching up to a
+     size change. */
+  min-width: max-content;
   /* Deliberately NOT height: 100% - that would pin #app to always fill
      whatever the window's current height already is, which means
      appEl.scrollHeight in fitWindowToContent() could only ever measure
@@ -46,7 +55,7 @@ body {
   /* Left-aligned so the date sits under the hour digits rather than
      centered under the whole HH:MM:SS row. */
   align-items: flex-start;
-  padding: 8px 20px;
+  padding: calc(var(--digit-size) * 0.083) calc(var(--digit-size) * 0.21);
   cursor: pointer;
 }
 
@@ -115,55 +124,66 @@ body {
 #digits {
   font-family: "Courier New", monospace;
   font-weight: bold;
-  font-size: clamp(28px, 14vw, 96px);
+  font-size: var(--digit-size);
   color: var(--digit-color);
   letter-spacing: 2px;
   line-height: 1;
+  /* The window is sized to fit the digits (fitWindowToContent in app.js),
+     so they must never wrap while that measurement is being taken.
+     width:max-content matters as much as the nowrap: as a plain block,
+     #digits would take its width from its container (i.e. the window we
+     are trying to measure FOR), so measuring it would just hand back the
+     current window width and the clock could never grow. */
+  white-space: nowrap;
+  width: max-content;
 }
 
 /* Replaces the monospace ":" glyph with two small round dots - smaller
    and circular instead of the font's own (fairly large, squarish) colon
-   shape. Sized in clamp(px, vw, px) rather than em because font-size is
-   zeroed below to hide the original character, which would make 1em
-   resolve to 0 on this same element. */
+   shape.
+
+   Deliberately built as a plain inline-flex column of two dots. The
+   earlier version stacked them with position:absolute + top percentages
+   + transform:translate(-50%,-50%) inside a span that still held a real
+   ":" character hidden via font-size:0. In a transparent window that
+   combination left a visible colored bar the exact size of this box -
+   an unpainted element box exposing stale compositor buffer content.
+   Nothing here paints a background, creates a stacking context, or
+   promotes a compositing layer, and the span in index.html is now empty
+   rather than holding a zero-sized glyph. */
 #digits .colon {
-  position: relative;
-  display: inline-block;
-  width: clamp(6px, 2vw, 14px);
-  height: clamp(28px, 14vw, 96px);
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* Edge-to-edge distance between the two dots. */
+  gap: calc(var(--digit-size) * 0.135);
+  height: 1em;
   /* Explicit margin on both sides, rather than relying on letter-spacing,
      so the gap around the dots is direct and predictable regardless of
      font/letter-spacing quirks. */
-  margin: 0 clamp(4px, 1.8vw, 11px);
-  font-size: 0;
+  margin: 0 calc(var(--digit-size) * 0.115);
   letter-spacing: 0;
   vertical-align: top;
+  background: transparent;
 }
 #digits .colon::before,
 #digits .colon::after {
   content: "";
-  position: absolute;
-  left: 50%;
-  width: clamp(4px, 1.6vw, 10px);
-  height: clamp(4px, 1.6vw, 10px);
+  display: block;
+  width: calc(var(--digit-size) * 0.104);
+  height: calc(var(--digit-size) * 0.104);
   border-radius: 50%;
   /* Same color + opacity as #date-line, so the colon dots match the date
      text underneath exactly. */
   background: #f1f5f9;
   opacity: 0.75;
-  transform: translate(-50%, -50%);
-}
-#digits .colon::before {
-  top: 38%;
-}
-#digits .colon::after {
-  top: 62%;
 }
 
 #date-line {
   font-family: "Courier New", monospace;
   font-weight: bold;
-  font-size: clamp(22px, 6.4vw, 40px);
+  font-size: calc(var(--digit-size) * 0.4167);
   letter-spacing: 3px;
   color: #f1f5f9;
   opacity: 0.75;

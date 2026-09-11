@@ -23,11 +23,15 @@
       </button>
 
       <div id="display" data-tauri-drag-region>
+        <!-- The .colon spans are intentionally EMPTY: the two dots are
+             drawn entirely by CSS (::before/::after). They used to hold a
+             real ":" hidden with font-size:0, which left a visible
+             artifact box in the transparent window. -->
         <div id="digits">
-          <span id="segment-h">00</span><span class="colon">:</span><span
+          <span id="segment-h">00</span><span class="colon"></span><span
             id="segment-m"
             >00</span
-          ><span class="colon">:</span><span id="segment-s">00</span>
+          ><span class="colon"></span><span id="segment-s">00</span>
         </div>
         <div id="date-line">SEP 11</div>
       </div>
@@ -53,6 +57,15 @@
         </div>
 
         <div class="settings-row">
+          <label
+            >Size
+            <select id="size-select">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+              <option value="huge">Huge</option>
+            </select>
+          </label>
           <label
             >Color
             <!-- Real <input type=color> kept only as the state holder (its
