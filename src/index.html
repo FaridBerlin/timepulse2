@@ -6,10 +6,13 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="app">
-      <!-- The whole background is a drag handle so a chromeless window can
-           still be moved; interactive controls stop propagation so clicks
-           on them don't drag the window. -->
+    <div id="app" data-tauri-drag-region>
+      <!-- data-tauri-drag-region only triggers a window drag on the exact
+           element it's applied to (not its children), so it's safe to put
+           it on every background layer here - buttons/inputs/selects
+           nested inside still get normal clicks, but any empty background
+           area (behind the digits, or in the controls panel) drags the
+           whole chromeless window. -->
       <div id="display" data-tauri-drag-region>
         <span id="segment-h">00</span><span class="colon">:</span><span
           id="segment-m"
@@ -17,7 +20,7 @@
         ><span class="colon">:</span><span id="segment-s">00</span>
       </div>
 
-      <div id="controls" class="hidden">
+      <div id="controls" class="hidden" data-tauri-drag-region>
         <div class="tabs">
           <button class="tab-btn active" data-mode="clock">Clock</button>
           <button class="tab-btn" data-mode="stopwatch">Stopwatch</button>
