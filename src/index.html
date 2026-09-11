@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Timepulse</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- The whole background is a drag handle so a chromeless window can
+           still be moved; interactive controls stop propagation so clicks
+           on them don't drag the window. -->
+      <div id="display" data-tauri-drag-region>
+        <span id="segment-h">00</span><span class="colon">:</span><span
+          id="segment-m"
+          >00</span
+        ><span class="colon">:</span><span id="segment-s">00</span>
+      </div>
+
+      <div id="controls" class="hidden">
+        <div class="tabs">
+          <button class="tab-btn active" data-mode="clock">Clock</button>
+          <button class="tab-btn" data-mode="stopwatch">Stopwatch</button>
+          <button class="tab-btn" data-mode="timer">Timer</button>
+        </div>
+
+        <div id="timer-input-row" class="hidden">
+          <input
+            id="timer-input"
+            type="text"
+            placeholder="HH:MM:SS (default 00:05:00)"
+          />
+        </div>
+
+        <div class="action-row">
+          <button id="start-btn" class="hidden">Start</button>
+          <button id="reset-btn" class="hidden">Reset</button>
+        </div>
+
+        <div class="settings-row">
+          <label
+            >Color
+            <input id="color-picker" type="color" value="#4ade80" />
+          </label>
+          <label
+            >Background
+            <select id="bg-select">
+              <option value="transparent">Transparent</option>
+              <option value="#0f172a" selected>Dark</option>
+              <option value="#000000">Black</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </label>
+          <input
+            id="bg-custom"
+            type="color"
+            value="#0f172a"
+            class="hidden"
+          />
+          <label
+            >Opacity
+            <input id="bg-opacity" type="range" min="0" max="100" value="90" />
+          </label>
+        </div>
+
+        <div class="window-row">
+          <label
+            ><input id="always-on-top" type="checkbox" /> Always on top</label
+          >
+          <button id="close-btn" title="Close">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

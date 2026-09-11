@@ -1,0 +1,15 @@
+[package]
+name = "timepulse2"
+version = "0.1.0"
+description = "Timepulse Tauri prototype: borderless, transparent, click-to-reveal clock/stopwatch/timer"
+edition = "2021"
+
+[lib]
+name = "timepulse2_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
