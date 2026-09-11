@@ -1,0 +1,52 @@
+name: timepulse2
+# `timepulse2` is just this dev project's working name - before you
+# publish, check on https://snapcraft.io/ whether that name is free, and
+# consider whether you want a more "storefront-friendly" public name (e.g.
+# timepulse-clock) - see the notes doc for details. Whatever you pick here
+# must also match `metadata.name`/`apps` below.
+version: '0.1.0'
+summary: A big, always-readable desktop clock, stopwatch and timer
+description: |
+  Timepulse is a large, fully customizable digital clock for the desktop -
+  built to be easy to read from across the room. Pick any color for the
+  digits, choose a solid or fully transparent background, click the clock
+  to reveal a settings panel with a stopwatch and countdown timer, and
+  optionally pin the window always-on-top over every other app.
+
+base: core24
+confinement: strict
+grade: stable
+license: MIT
+
+architectures:
+  - build-on: amd64
+
+apps:
+  timepulse2:
+    command: usr/bin/timepulse2
+    extensions: [gnome]
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+      - gsettings
+
+parts:
+  timepulse2:
+    # Simplest, most reliable route: build the .deb with Tauri's own
+    # bundler first (`cargo tauri build --bundles deb`), then have
+    # snapcraft just unpack it, rather than trying to reproduce the whole
+    # Rust/WebKitGTK build inside snapcraft's own build environment.
+    #
+    # IMPORTANT: update the version number in this path if it no longer
+    # matches the `version:` field above.
+    plugin: dump
+    source: src-tauri/target/release/bundle/deb/timepulse2_0.1.0_amd64.deb
+    source-type: deb
+    stage:
+      - usr/bin/timepulse2
+      - usr/share/icons
+      - usr/share/applications
+      - usr/lib

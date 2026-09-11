@@ -1,41 +1,61 @@
-# timepulse2 (Tauri prototype)
+# Timepulse
 
-A side-by-side experiment with the main `timepulse` Go/Fyne project, testing
-whether a different desktop framework gets you the "just the watch, no
-title bar, background can be transparent, click to reveal controls" look
-more directly than Fyne currently can.
+**A big, always-on-top digital clock for the Linux desktop** — a
+transparent, fully customizable clock, stopwatch, and countdown timer
+built with [Tauri](https://v2.tauri.app/) (Rust) for Ubuntu, GNOME, and
+other Linux/Wayland desktops.
 
-Built with [Tauri v2](https://v2.tauri.app/): a Rust shell hosting a plain
-HTML/CSS/JS frontend (no npm build step, no framework — just static files).
-All the clock/stopwatch/timer logic lives in `src/app.js`; the Rust side
-(`src-tauri/`) is just the window shell.
+It exists because the regular Linux system clock is too small to read
+from across the room. Timepulse blows the digits up to whatever size you
+want, lets you pick any color through a built-in color picker, and can
+run with a fully transparent background so it's just glowing numbers
+floating over your desktop — with a stopwatch and countdown timer built
+in, and a real always-on-top mode that actually stays on top on Wayland.
+
+![Timepulse floating over the desktop, fully transparent background](img/Screenshot%20from%202026-09-11%2014-42-39.png)
 
 ## What it does
 
-- The window has **no title bar** (`"decorations": false`) and a
-  **transparent background** (`"transparent": true`), both set in
-  `src-tauri/tauri.conf.json`.
-- By default you just see the big colored digits — no chrome at all.
-- **Clicking the digits** toggles an overlay with Clock/Stopwatch/Timer
-  tabs, a color picker, a background picker (including a genuine
-  "Transparent" option so *only* the digits float over your desktop), an
-  opacity slider, an "always on top" toggle, and a close button (there's no
-  OS close button without a title bar, so one is built into the overlay).
-- Since there's no title bar to drag, the whole background area is a Tauri
-  drag region — click-and-drag anywhere on the digits to move the window.
-- Settings persist across restarts via `localStorage`.
+- **Huge, legible digits** in a color you choose — clicking the color
+  swatch opens a built-in picker (saturation/hue square, hex field, and
+  quick presets), not an OS dialog.
+- **Background is fully configurable**: transparent (only the digits and
+  date float over your wallpaper), a couple of solid presets, or any
+  custom color with its own opacity slider.
+- **Click the clock** to reveal a panel with Clock / Stopwatch / Timer
+  tabs plus the color and background controls. The panel opens *below*
+  the clock rather than over it, so the clock stays visible the whole
+  time you're adjusting something — and the window resizes itself to fit
+  exactly what's showing.
+- **Stopwatch** and a **countdown timer** (type a target as `HH:MM:SS`),
+  each with start/pause/reset.
+- **No OS title bar** — the whole window is a drag handle, click and drag
+  from anywhere on it to move it.
+- **Right-click for a quick menu**: toggle Always on top, Quit, or
+  Cancel.
+- **Always on top actually stays on top** — including over other
+  windows you click into, like a browser or an editor (see
+  [Notes](#notes-on-linuxwayland) below for why that needed a specific
+  fix).
+- Settings (color, background, opacity, always-on-top) persist across
+  restarts.
 
-## Important: this hasn't been built or run yet
+## Screenshots
 
-I wrote every file here by hand, from Tauri's current documentation — I
-don't have a way to install the Rust/Node toolchains or compile a Tauri app
-in this session, and I don't have shell access to your machine either. The
-JS and JSON have been syntax-checked, and the Rust files match Tauri's
-standard minimal scaffold, but **the first `cargo tauri dev` you run is
-also this project's first real compile.** If something doesn't build,
-paste me the error and I'll fix it.
+| | |
+|---|---|
+| ![Color picker](img/Screenshot%20from%202026-09-11%2014-35-19.png) Custom color picker | ![Background options](img/Screenshot%20from%202026-09-11%2014-42-30.png) Transparent / solid / custom backgrounds |
+| ![Stopwatch](img/Screenshot%20from%202026-09-11%2014-36-49.png) Stopwatch | ![Timer](img/Screenshot%20from%202026-09-11%2014-37-02.png) Countdown timer |
+| ![Right-click menu](img/Screenshot%20from%202026-09-11%2014-37-32.png) Right-click quick menu (Always on top / Quit / Cancel) | |
 
-## Prerequisites (Ubuntu/Debian, since that's what you're on)
+## Built with
+
+[Tauri v2](https://v2.tauri.app/): a small Rust shell (`src-tauri/`)
+hosting a plain HTML/CSS/JS frontend (`src/`) — no npm, no frontend
+build step, no framework. All the clock/stopwatch/timer/color-picker
+logic lives in `src/app.js`.
+
+## Prerequisites (Ubuntu/Debian)
 
 If you don't already have Rust — **use the official installer, not the
 `apt`/`snap` rustup packages** (those ship older Rust versions that can
@@ -61,14 +81,14 @@ sudo apt install libwebkit2gtk-4.1-dev \
   librsvg2-dev
 ```
 
-Install the Tauri CLI (as a cargo subcommand, no Node/npm required for this
-project since the frontend has no build step):
+Install the Tauri CLI (as a cargo subcommand — no Node/npm required,
+since the frontend has no build step):
 
 ```bash
 cargo install tauri-cli --version "^2.0.0" --locked
 ```
 
-(If you're on Fedora/RHEL instead, swap the `apt install` above for:
+(On Fedora/RHEL instead:
 `sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel libxdo-devel && sudo dnf group install "c-development"`)
 
 ## Run it
@@ -79,39 +99,32 @@ From the `timepulse2/` directory:
 cargo tauri dev
 ```
 
-This compiles the Rust shell and opens the window pointed at `src/`
-directly (no dev server needed, since there's no bundler in the loop).
-
 ## Build a distributable binary
 
 ```bash
 cargo tauri build
 ```
 
-Note: `tauri.conf.json` doesn't declare any app icons yet (`bundle.icon`),
-which `cargo tauri dev` doesn't need but `cargo tauri build` will complain
-about — add real icon files under `src-tauri/icons/` before packaging for
-distribution. `cargo tauri icon <path-to-a-source-png>` generates the full
-set from one source image.
+Packaging for the Ubuntu App Center (Snap Store) is in progress — see
+`snap/snapcraft.yaml`.
 
-## Known unknowns / things to check once you can actually run it
+## Notes on Linux/Wayland
 
-- Whether Linux window transparency renders as expected depends on your
-  desktop environment/compositor actually supporting an alpha channel on
-  the window (most modern GNOME/KDE/Wayland setups with a compositor do;
-  some minimal X11 window managers without a compositing manager running
-  won't show transparency at all and the "Transparent" background option
-  will likely just render as solid black instead).
-- The always-on-top checkbox and close button call the Tauri v2 JS window
-  API (`window.__TAURI__.window`, exposed via `"withGlobalTauri": true` in
-  the config) — this is standard v2 behavior but is one of the pieces I
-  couldn't verify by actually running it.
+- **Always on top**: on a Wayland session (the Ubuntu/GNOME default),
+  apps aren't normally allowed to control their own window stacking at
+  all — Wayland leaves that entirely to the compositor, so a plain
+  "always on top" request is silently ignored. Timepulse works around
+  this by forcing the window through XWayland (`GDK_BACKEND=x11`, set in
+  `src-tauri/src/main.rs`), which restores normal X11 window management
+  and makes always-on-top behave as expected.
+- **Transparency** depends on your desktop actually compositing (most
+  modern GNOME/KDE/Wayland setups do). On a non-compositing X11 window
+  manager, the "Transparent" background option will likely render as
+  solid black instead.
 
-## Comparing this to the Go/Fyne version
+## Related project
 
-The Go project (`timepulse`) is staying as-is per your call — this is a
-separate exploration, not a replacement. If this feels better once you've
-run it, we can talk about what it'd take to actually move forward with it
-(porting the terminal-mode tools would still make sense to leave in Go,
-since this only covers the desktop GUI). If it doesn't, the full-screen
-kiosk-mode approach I proposed for the Fyne app is still on the table.
+[`timepulse`](../timepulse) is the original terminal (and Fyne desktop
+GUI) version of this project, written in Go. That one stays as the
+terminal-mode tool; this Tauri version is the actively developed desktop
+clock.
