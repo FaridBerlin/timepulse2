@@ -35,18 +35,30 @@ standard minimal scaffold, but **the first `cargo tauri dev` you run is
 also this project's first real compile.** If something doesn't build,
 paste me the error and I'll fix it.
 
-## Prerequisites (Linux/Fedora, since that's what you're on)
+## Prerequisites (Ubuntu/Debian, since that's what you're on)
 
-```bash
-sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
-  libappindicator-gtk3-devel librsvg2-devel libxdo-devel
-sudo dnf group install "c-development"
-```
-
-If you don't already have Rust:
+If you don't already have Rust — **use the official installer, not the
+`apt`/`snap` rustup packages** (those ship older Rust versions that can
+cause confusing Tauri build failures):
 
 ```bash
 curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+source "$HOME/.cargo/env"
+```
+
+System dependencies:
+
+```bash
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libxdo-dev \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
 ```
 
 Install the Tauri CLI (as a cargo subcommand, no Node/npm required for this
@@ -55,6 +67,9 @@ project since the frontend has no build step):
 ```bash
 cargo install tauri-cli --version "^2.0.0" --locked
 ```
+
+(If you're on Fedora/RHEL instead, swap the `apt install` above for:
+`sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel libxdo-devel && sudo dnf group install "c-development"`)
 
 ## Run it
 
