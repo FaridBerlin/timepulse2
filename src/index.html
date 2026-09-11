@@ -13,11 +13,23 @@
            nested inside still get normal clicks, but any empty background
            area (behind the digits, or in the controls panel) drags the
            whole chromeless window. -->
+
+      <!-- Small quit button, top-right corner. Hidden until you hover the
+           window (see CSS) so it doesn't clutter the "just a watch" look
+           when idle. Quits the whole app - unlike the overlay's ✕, which
+           only goes back to the watch view. -->
+      <button id="quit-corner" title="Quit Timepulse (Ctrl+Q, or right-click anywhere)">
+        ✕
+      </button>
+
       <div id="display" data-tauri-drag-region>
-        <span id="segment-h">00</span><span class="colon">:</span><span
-          id="segment-m"
-          >00</span
-        ><span class="colon">:</span><span id="segment-s">00</span>
+        <div id="digits">
+          <span id="segment-h">00</span><span class="colon">:</span><span
+            id="segment-m"
+            >00</span
+          ><span class="colon">:</span><span id="segment-s">00</span>
+        </div>
+        <div id="date-line">SEP 11</div>
       </div>
 
       <div id="controls" class="hidden" data-tauri-drag-region>
@@ -70,8 +82,20 @@
           <label
             ><input id="always-on-top" type="checkbox" /> Always on top</label
           >
-          <button id="close-btn" title="Close">✕</button>
+          <button
+            id="close-btn"
+            title="Back to the watch (Ctrl+Q, or right-click, quits)"
+          >
+            ✕
+          </button>
         </div>
+      </div>
+
+      <!-- Custom right-click menu - real desktop OS context menus aren't
+           reachable from web content in a Tauri webview, so this is a
+           small hand-built substitute, shown at the cursor position. -->
+      <div id="context-menu" class="hidden">
+        <button id="context-quit">Quit Timepulse</button>
       </div>
     </div>
 

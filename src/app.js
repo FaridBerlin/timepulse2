@@ -2,6 +2,7 @@
   const displayH = document.getElementById("segment-h");
   const displayM = document.getElementById("segment-m");
   const displayS = document.getElementById("segment-s");
+  const dateLine = document.getElementById("date-line");
   const display = document.getElementById("display");
   const controls = document.getElementById("controls");
   const tabButtons = document.querySelectorAll(".tab-btn");
@@ -15,6 +16,9 @@
   const bgOpacity = document.getElementById("bg-opacity");
   const alwaysOnTop = document.getElementById("always-on-top");
   const closeBtn = document.getElementById("close-btn");
+  const quitCorner = document.getElementById("quit-corner");
+  const contextMenu = document.getElementById("context-menu");
+  const contextQuit = document.getElementById("context-quit");
 
   // window.__TAURI__ is only injected when "withGlobalTauri": true is set
   // in tauri.conf.json (it is, here). Guard it anyway so this file also
@@ -39,6 +43,18 @@
 
   function pad(n) {
     return String(Math.floor(n)).padStart(2, "0");
+  }
+
+  const MONTH_ABBR = [
+    "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+  ];
+
+  // Shows today's date under the clock, e.g. "SEP 11" - always on,
+  // independent of which mode (clock/stopwatch/timer) is active.
+  function updateDate() {
+    const now = new Date();
+    dateLine.textContent = `${MONTH_ABBR[now.getMonth()]} ${now.getDate()}`;
   }
 
   function renderHMS(totalMs) {
@@ -173,14 +189,95 @@
     });
   });
 
-  // Click-to-reveal: tapping the digits toggles the settings/tabs overlay.
-  display.addEventListener("click", () => {
-    controls.classList.toggle("hidden");
+  function showControls() {
+    controls.classList.remove("hidden");
+  }
+
+  function hideControls() {
+    controls.classList.add("hidden");
+  }
+
+  function hideContextMenu() {
+    contextMenu.classList.add("hidden");
+  }
+
+  // The one real "close the whole app" action - everything else (the
+  // overlay's ✕, Escape) only goes back to the watch view.
+  function quitApp() {
+    if (currentWindow) {
+      currentWindow.close();
+    } else {
+      window.close();
+    }
+  }
+
+  // Click-to-reveal: tapping the digits opens the settings/tabs overlay.
+  // (The overlay sits on top of the digits once open, so this only ever
+  // fires while it's closed - closing it is handled explicitly below.)
+  display.addEventListener("click", showControls);
+
+  // The overlay's "✕" is the reliable way back to just-the-watch - it only
+  // closes the overlay, keeping whatever you just picked (color,
+  // background, etc. are already applied live as you change them). It
+  // does NOT quit the app.
+  closeBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    hideControls();
   });
 
-  // Don't let clicks inside the overlay bubble up and immediately
-  // re-toggle it closed via the listener above.
-  controls.addEventListener("click", (event) => event.stopPropagation());
+  // Clicking empty background inside the overlay (not a button/input/select)
+  // also closes it, same as clicking outside a video player's OSD would.
+  controls.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (event.target === controls) {
+      hideControls();
+    }
+  });
+
+  // The small corner button (visible on hover) and the right-click menu
+  // are the two ways to actually quit the app - there's no title bar to
+  // provide a real OS close button, and Ctrl+Q covers the keyboard case.
+  quitCorner.addEventListener("click", (event) => {
+    event.stopPropagation();
+    quitApp();
+  });
+
+  document.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    contextMenu.style.left = `${event.clientX}px`;
+    contextMenu.style.top = `${event.clientY}px`;
+    contextMenu.classList.remove("hidden");
+  });
+
+  contextQuit.addEventListener("click", (event) => {
+    event.stopPropagation();
+    quitApp();
+  });
+
+  // Capture phase (not bubble) so this still runs even when the click
+  // target's own handler calls stopPropagation - otherwise a click inside
+  // the settings overlay while the context menu happens to be open
+  // wouldn't dismiss the menu.
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!contextMenu.classList.contains("hidden") && !contextMenu.contains(event.target)) {
+        hideContextMenu();
+      }
+    },
+    true
+  );
+
+  // Escape always gets you back to the watch (and dismisses the right-click
+  // menu if it's open); Ctrl+Q actually quits.
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hideControls();
+      hideContextMenu();
+    } else if (event.ctrlKey && event.key.toLowerCase() === "q") {
+      quitApp();
+    }
+  });
 
   function applyColor(hex) {
     document.documentElement.style.setProperty("--digit-color", hex);
@@ -236,14 +333,6 @@
     saveSettings();
   });
 
-  closeBtn.addEventListener("click", () => {
-    if (currentWindow) {
-      currentWindow.close();
-    } else {
-      window.close();
-    }
-  });
-
   function saveSettings() {
     try {
       localStorage.setItem(
@@ -293,4 +382,10 @@
 
   loadSettings();
   setMode(mode);
+
+  // The date line runs on its own timer, separate from the mode tickers
+  // above, since it should stay visible under the clock/stopwatch/timer
+  // digits regardless of which one is active. Once a minute is plenty.
+  updateDate();
+  setInterval(updateDate, 60 * 1000);
 })();
