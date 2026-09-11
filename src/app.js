@@ -11,14 +11,25 @@
   const timerInputRow = document.getElementById("timer-input-row");
   const timerInput = document.getElementById("timer-input");
   const colorPicker = document.getElementById("color-picker");
+  const colorSwatch = document.getElementById("color-swatch");
   const bgSelect = document.getElementById("bg-select");
   const bgCustom = document.getElementById("bg-custom");
+  const bgCustomSwatch = document.getElementById("bg-custom-swatch");
   const bgOpacity = document.getElementById("bg-opacity");
+  const colorPopup = document.getElementById("color-popup");
+  const popupSwatch = document.getElementById("popup-swatch");
+  const popupHex = document.getElementById("popup-hex");
+  const svSquare = document.getElementById("sv-square");
+  const svCursor = document.getElementById("sv-cursor");
+  const hueTrack = document.getElementById("hue-track");
+  const hueCursor = document.getElementById("hue-cursor");
+  const popupPresets = document.getElementById("popup-presets");
   const alwaysOnTop = document.getElementById("always-on-top");
   const closeBtn = document.getElementById("close-btn");
   const quitCorner = document.getElementById("quit-corner");
   const contextMenu = document.getElementById("context-menu");
   const contextQuit = document.getElementById("context-quit");
+  const contextCancel = document.getElementById("context-cancel");
 
   // window.__TAURI__ is only injected when "withGlobalTauri": true is set
   // in tauri.conf.json (it is, here). Guard it anyway so this file also
@@ -140,6 +151,14 @@
       tickTimer = setInterval(tickCountdown, 100);
     }
     saveSettings();
+
+    // Switching tabs changes how tall the panel's content is (the timer
+    // tab adds an input row + start/reset buttons the other tabs don't
+    // have), so re-fit the window - but only while the panel is actually
+    // showing; no need to resize anything while it's collapsed.
+    if (!controls.classList.contains("hidden")) {
+      fitWindowToContent();
+    }
   }
 
   startBtn.addEventListener("click", () => {
@@ -189,12 +208,37 @@
     });
   });
 
+  const appEl = document.getElementById("app");
+
+  // The settings panel now stacks BELOW the clock instead of covering it,
+  // so the OS window itself needs to grow/shrink to fit whichever content
+  // is currently showing. appEl.scrollHeight (a plain DOM measurement, in
+  // the same logical-pixel units Tauri's LogicalSize expects) already
+  // reflects the post-toggle layout by the time this runs, since reading
+  // scrollHeight forces a synchronous reflow.
+  async function fitWindowToContent() {
+    if (!currentWindow || !tauriWindowApi || !tauriWindowApi.LogicalSize) return;
+    try {
+      const scale = await currentWindow.scaleFactor();
+      const currentLogical = (await currentWindow.innerSize()).toLogical(scale);
+      const neededHeight = Math.ceil(appEl.scrollHeight);
+      await currentWindow.setSize(
+        new tauriWindowApi.LogicalSize(currentLogical.width, neededHeight)
+      );
+    } catch (e) {
+      // Resize permission missing or unsupported on this platform - the
+      // window just stays whatever size it was, content may get clipped.
+    }
+  }
+
   function showControls() {
     controls.classList.remove("hidden");
+    fitWindowToContent();
   }
 
   function hideControls() {
     controls.classList.add("hidden");
+    fitWindowToContent();
   }
 
   function hideContextMenu() {
@@ -211,10 +255,18 @@
     }
   }
 
-  // Click-to-reveal: tapping the digits opens the settings/tabs overlay.
-  // (The overlay sits on top of the digits once open, so this only ever
-  // fires while it's closed - closing it is handled explicitly below.)
-  display.addEventListener("click", showControls);
+  // Click-to-reveal: tapping the digits toggles the settings/tabs panel.
+  // It used to only ever open (the panel covered the digits once shown,
+  // so there was no way to click them again to close it) - now that the
+  // panel stacks below the clock instead of over it, the digits stay
+  // reachable either way, so this can be a real toggle.
+  display.addEventListener("click", () => {
+    if (controls.classList.contains("hidden")) {
+      showControls();
+    } else {
+      hideControls();
+    }
+  });
 
   // The overlay's "✕" is the reliable way back to just-the-watch - it only
   // closes the overlay, keeping whatever you just picked (color,
@@ -254,26 +306,48 @@
     quitApp();
   });
 
-  // Capture phase (not bubble) so this still runs even when the click
-  // target's own handler calls stopPropagation - otherwise a click inside
-  // the settings overlay while the context menu happens to be open
-  // wouldn't dismiss the menu.
+  contextCancel.addEventListener("click", (event) => {
+    event.stopPropagation();
+    hideContextMenu();
+  });
+
+  // Dismiss the menu on any other click/press outside it. This listens on
+  // "mousedown" rather than "click", and in the capture phase, for two
+  // reasons: (1) every background element here has data-tauri-drag-region,
+  // which starts a native window drag as soon as the mouse goes down - on
+  // some platforms that swallows the follow-up "click" event entirely, so
+  // a plain click listener would never see it; (2) capture phase runs
+  // before any target's own handler (even ones that call
+  // stopPropagation()), so this always gets a chance to close the menu
+  // first regardless of what else that click does.
+  // Same reasoning applies to the color popup: clicking anywhere outside
+  // it (other than the swatch buttons that open/close it themselves)
+  // dismisses it.
   document.addEventListener(
-    "click",
+    "mousedown",
     (event) => {
       if (!contextMenu.classList.contains("hidden") && !contextMenu.contains(event.target)) {
         hideContextMenu();
+      }
+      if (
+        !colorPopup.classList.contains("hidden") &&
+        !colorPopup.contains(event.target) &&
+        event.target !== colorSwatch &&
+        event.target !== bgCustomSwatch
+      ) {
+        closeColorPopup();
       }
     },
     true
   );
 
   // Escape always gets you back to the watch (and dismisses the right-click
-  // menu if it's open); Ctrl+Q actually quits.
+  // menu and color popup if they're open); Ctrl+Q actually quits.
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       hideControls();
       hideContextMenu();
+      closeColorPopup();
     } else if (event.ctrlKey && event.key.toLowerCase() === "q") {
       quitApp();
     }
@@ -305,25 +379,208 @@
     return bgSelect.value === "custom" ? bgCustom.value : bgSelect.value;
   }
 
-  colorPicker.addEventListener("input", () => {
-    applyColor(colorPicker.value);
-    saveSettings();
-  });
-
   bgSelect.addEventListener("change", () => {
-    bgCustom.classList.toggle("hidden", bgSelect.value !== "custom");
+    const isCustom = bgSelect.value === "custom";
+    bgCustom.classList.toggle("hidden", !isCustom);
+    bgCustomSwatch.classList.toggle("hidden", !isCustom);
+    if (!isCustom) closeColorPopup("bg");
     applyBackground(currentBackgroundValue(), bgOpacity.value);
     saveSettings();
-  });
-
-  bgCustom.addEventListener("input", () => {
-    applyBackground(currentBackgroundValue(), bgOpacity.value);
-    saveSettings();
+    // Showing/hiding the custom-color swatch changes the panel's height.
+    fitWindowToContent();
   });
 
   bgOpacity.addEventListener("input", () => {
     applyBackground(currentBackgroundValue(), bgOpacity.value);
     saveSettings();
+  });
+
+  // --- Custom color picker (replaces the OS-native <input type=color>
+  // dialog with an in-window saturation/value square + hue bar, in the
+  // same style as the rest of the panel). The native <input type=color>
+  // elements stay in the DOM purely as the value store the rest of the
+  // app already reads (colorPicker.value / bgCustom.value) - they're just
+  // never shown or clicked anymore.
+
+  let activeColorTarget = null; // "digit" | "bg" | null
+  let hsv = { h: 0, s: 0, v: 0 };
+  let svDragging = false;
+  let hueDragging = false;
+
+  function hexToHsv(hex) {
+    const clean = hex.replace("#", "");
+    const r = parseInt(clean.substring(0, 2), 16) / 255;
+    const g = parseInt(clean.substring(2, 4), 16) / 255;
+    const b = parseInt(clean.substring(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const d = max - min;
+    let h = 0;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    const s = max === 0 ? 0 : d / max;
+    const v = max;
+    return { h, s, v };
+  }
+
+  function hsvToHex(h, s, v) {
+    const c = v * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = v - c;
+    let r = 0,
+      g = 0,
+      b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    const toHex = (n) =>
+      Math.round((n + m) * 255)
+        .toString(16)
+        .padStart(2, "0");
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function updatePopupUI() {
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+    popupSwatch.style.background = hex;
+    popupHex.value = hex;
+    svSquare.style.backgroundColor = hsvToHex(hsv.h, 1, 1);
+    svCursor.style.left = `${hsv.s * 100}%`;
+    svCursor.style.top = `${(1 - hsv.v) * 100}%`;
+    hueCursor.style.left = `${(hsv.h / 360) * 100}%`;
+  }
+
+  function commitColor() {
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+    if (activeColorTarget === "digit") {
+      colorPicker.value = hex;
+      colorSwatch.style.background = hex;
+      applyColor(hex);
+    } else if (activeColorTarget === "bg") {
+      bgCustom.value = hex;
+      bgCustomSwatch.style.background = hex;
+      applyBackground(currentBackgroundValue(), bgOpacity.value);
+    }
+    saveSettings();
+  }
+
+  function openColorPopup(target, anchorHex) {
+    activeColorTarget = target;
+    hsv = hexToHsv(anchorHex);
+    updatePopupUI();
+    colorPopup.classList.remove("hidden");
+    fitWindowToContent();
+  }
+
+  // targetToClose is optional: pass "bg" to only close the popup if it's
+  // currently showing the background picker (used when the background
+  // dropdown switches away from "Custom…" out from under it).
+  function closeColorPopup(targetToClose) {
+    if (colorPopup.classList.contains("hidden")) return;
+    if (targetToClose && activeColorTarget !== targetToClose) return;
+    colorPopup.classList.add("hidden");
+    activeColorTarget = null;
+    fitWindowToContent();
+  }
+
+  colorSwatch.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (activeColorTarget === "digit" && !colorPopup.classList.contains("hidden")) {
+      closeColorPopup();
+    } else {
+      openColorPopup("digit", colorPicker.value);
+    }
+  });
+
+  bgCustomSwatch.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (activeColorTarget === "bg" && !colorPopup.classList.contains("hidden")) {
+      closeColorPopup();
+    } else {
+      openColorPopup("bg", bgCustom.value);
+    }
+  });
+
+  function setSvFromEvent(event) {
+    const rect = svSquare.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+    const y = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+    hsv.s = rect.width === 0 ? 0 : x / rect.width;
+    hsv.v = rect.height === 0 ? 0 : 1 - y / rect.height;
+    updatePopupUI();
+    commitColor();
+  }
+
+  function setHueFromEvent(event) {
+    const rect = hueTrack.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+    hsv.h = rect.width === 0 ? 0 : (x / rect.width) * 360;
+    updatePopupUI();
+    commitColor();
+  }
+
+  svSquare.addEventListener("mousedown", (event) => {
+    event.stopPropagation();
+    svDragging = true;
+    setSvFromEvent(event);
+  });
+
+  hueTrack.addEventListener("mousedown", (event) => {
+    event.stopPropagation();
+    hueDragging = true;
+    setHueFromEvent(event);
+  });
+
+  document.addEventListener("mousemove", (event) => {
+    if (svDragging) setSvFromEvent(event);
+    if (hueDragging) setHueFromEvent(event);
+  });
+
+  document.addEventListener("mouseup", () => {
+    svDragging = false;
+    hueDragging = false;
+  });
+
+  popupHex.addEventListener("click", (event) => event.stopPropagation());
+  popupHex.addEventListener("change", () => {
+    const val = popupHex.value.trim();
+    if (/^#?[0-9a-fA-F]{6}$/.test(val)) {
+      hsv = hexToHsv(val.startsWith("#") ? val : `#${val}`);
+      updatePopupUI();
+      commitColor();
+    } else {
+      // Invalid entry - just snap the field back to the current color.
+      updatePopupUI();
+    }
+  });
+
+  const PRESET_COLORS = [
+    "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
+    "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#3b82f6",
+    "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899",
+    "#f1f5f9", "#94a3b8", "#0f172a", "#000000",
+  ];
+  PRESET_COLORS.forEach((hex) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "preset-swatch";
+    btn.style.background = hex;
+    btn.title = hex;
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      hsv = hexToHsv(hex);
+      updatePopupUI();
+      commitColor();
+    });
+    popupPresets.appendChild(btn);
   });
 
   alwaysOnTop.addEventListener("change", () => {
@@ -360,12 +617,18 @@
 
       if (saved.color) {
         colorPicker.value = saved.color;
+        colorSwatch.style.background = saved.color;
         applyColor(saved.color);
       }
       if (saved.bg) {
         bgSelect.value = saved.bg;
-        if (saved.bgCustom) bgCustom.value = saved.bgCustom;
-        bgCustom.classList.toggle("hidden", saved.bg !== "custom");
+        if (saved.bgCustom) {
+          bgCustom.value = saved.bgCustom;
+          bgCustomSwatch.style.background = saved.bgCustom;
+        }
+        const isCustom = saved.bg === "custom";
+        bgCustom.classList.toggle("hidden", !isCustom);
+        bgCustomSwatch.classList.toggle("hidden", !isCustom);
       }
       if (saved.bgOpacity) bgOpacity.value = saved.bgOpacity;
       applyBackground(currentBackgroundValue(), bgOpacity.value);
@@ -382,6 +645,9 @@
 
   loadSettings();
   setMode(mode);
+  // Match the window to the actual restored content right away, instead
+  // of leaving it at whatever size is hardcoded in tauri.conf.json.
+  fitWindowToContent();
 
   // The date line runs on its own timer, separate from the mode tickers
   // above, since it should stay visible under the clock/stopwatch/timer

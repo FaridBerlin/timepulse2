@@ -55,7 +55,25 @@
         <div class="settings-row">
           <label
             >Color
-            <input id="color-picker" type="color" value="#4ade80" />
+            <!-- Real <input type=color> kept only as the state holder (its
+                 .value is what the rest of the app reads/writes) - it's
+                 never shown or clicked, since clicking it would pop the
+                 native OS color dialog we're replacing. The swatch button
+                 next to it opens our own picker below instead. -->
+            <input
+              id="color-picker"
+              type="color"
+              value="#4ade80"
+              class="native-color-input"
+              tabindex="-1"
+            />
+            <button
+              id="color-swatch"
+              type="button"
+              class="swatch-btn"
+              style="background: #4ade80"
+              title="Choose clock color"
+            ></button>
           </label>
           <label
             >Background
@@ -70,12 +88,44 @@
             id="bg-custom"
             type="color"
             value="#0f172a"
-            class="hidden"
+            class="native-color-input hidden"
+            tabindex="-1"
           />
+          <button
+            id="bg-custom-swatch"
+            type="button"
+            class="swatch-btn hidden"
+            style="background: #0f172a"
+            title="Choose custom background color"
+          ></button>
           <label
             >Opacity
             <input id="bg-opacity" type="range" min="0" max="100" value="90" />
           </label>
+        </div>
+
+        <!-- Shared custom color picker popup, opened by either swatch
+             button above. Stacks in normal flow (not absolutely
+             positioned) so fitWindowToContent() in app.js naturally grows
+             the OS window to fit it while it's open. -->
+        <div id="color-popup" class="hidden">
+          <div class="popup-header">
+            <div id="popup-swatch" class="popup-swatch"></div>
+            <input
+              id="popup-hex"
+              type="text"
+              maxlength="7"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div id="sv-square">
+            <div id="sv-cursor"></div>
+          </div>
+          <div id="hue-track">
+            <div id="hue-cursor"></div>
+          </div>
+          <div id="popup-presets" class="popup-presets"></div>
         </div>
 
         <div class="window-row">
@@ -96,6 +146,7 @@
            small hand-built substitute, shown at the cursor position. -->
       <div id="context-menu" class="hidden">
         <button id="context-quit">Quit Timepulse</button>
+        <button id="context-cancel">Cancel</button>
       </div>
     </div>
 

@@ -25,10 +25,17 @@ body {
 #app {
   position: relative;
   width: 100%;
-  height: 100%;
+  /* Deliberately NOT height: 100% - that would pin #app to always fill
+     whatever the window's current height already is, which means
+     appEl.scrollHeight in fitWindowToContent() could only ever measure
+     "at least as tall as the window already is" and the window could
+     grow but never shrink back down. Auto height means #app is only ever
+     as tall as its actual content (clock, plus the panel when it's
+     open), so scrollHeight - and the window - can shrink again too. */
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background: rgba(var(--bg-rgb), var(--bg-alpha));
   border-radius: 14px;
 }
@@ -92,8 +99,11 @@ body {
   text-align: left;
   cursor: pointer;
 }
-#context-menu button:hover {
+#context-quit:hover {
   background: #ef4444;
+}
+#context-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 #digits {
@@ -105,8 +115,43 @@ body {
   line-height: 1;
 }
 
+/* Replaces the monospace ":" glyph with two small round dots - smaller
+   and circular instead of the font's own (fairly large, squarish) colon
+   shape. Sized in clamp(px, vw, px) rather than em because font-size is
+   zeroed below to hide the original character, which would make 1em
+   resolve to 0 on this same element. */
 #digits .colon {
-  color: #f1f5f9;
+  position: relative;
+  display: inline-block;
+  width: clamp(6px, 2vw, 14px);
+  height: clamp(28px, 14vw, 96px);
+  /* Explicit margin on both sides, rather than relying on letter-spacing,
+     so the gap around the dots is direct and predictable regardless of
+     font/letter-spacing quirks. */
+  margin: 0 clamp(4px, 1.8vw, 11px);
+  font-size: 0;
+  letter-spacing: 0;
+  vertical-align: top;
+}
+#digits .colon::before,
+#digits .colon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: clamp(4px, 1.6vw, 10px);
+  height: clamp(4px, 1.6vw, 10px);
+  border-radius: 50%;
+  /* Same color + opacity as #date-line, so the colon dots match the date
+     text underneath exactly. */
+  background: #f1f5f9;
+  opacity: 0.75;
+  transform: translate(-50%, -50%);
+}
+#digits .colon::before {
+  top: 38%;
+}
+#digits .colon::after {
+  top: 62%;
 }
 
 #date-line {
@@ -123,18 +168,19 @@ body {
   display: none !important;
 }
 
-/* Click-to-reveal overlay: sits on top of the display rather than pushing
-   the window taller, so the window stays a fixed small "watch" size. */
+/* Click-to-reveal panel: stacks BELOW the display in normal document flow
+   (not on top of it) so the clock stays visible while it's open. app.js
+   grows/shrinks the actual OS window height to match whenever this is
+   toggled, so the window is only ever as tall as it needs to be. */
 #controls {
-  position: absolute;
-  inset: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 14px;
+  padding: 10px 16px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0 0 14px 14px;
 }
 
 .tabs {
@@ -180,6 +226,131 @@ body {
   cursor: pointer;
 }
 
+.native-color-input {
+  /* State holder only - see the comment in index.html. Never shown, never
+     clicked, so the browser's native color dialog never appears. */
+  display: none;
+}
+
+.swatch-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0;
+}
+.swatch-btn:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Custom color picker popup - a compact saturation/value square + hue bar
+   + hex field + presets, replacing the OS-native color dialog so it stays
+   consistent with the rest of the (small, always-on-top) watch UI. */
+#color-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.popup-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+#popup-hex {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  font-family: "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+#sv-square {
+  position: relative;
+  width: 100%;
+  height: 90px;
+  border-radius: 6px;
+  /* The pure hue is set inline via JS (background-color); these two
+     gradients layer saturation (left-to-right, white to transparent) and
+     value/brightness (bottom-to-top, black to transparent) on top of it. */
+  background-image: linear-gradient(to right, #fff, rgba(255, 255, 255, 0)),
+    linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+  cursor: crosshair;
+}
+#sv-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#hue-track {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(
+    to right,
+    #ff0000 0%,
+    #ffff00 17%,
+    #00ff00 33%,
+    #00ffff 50%,
+    #0000ff 67%,
+    #ff00ff 83%,
+    #ff0000 100%
+  );
+  cursor: pointer;
+}
+#hue-cursor {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: transparent;
+}
+
+.popup-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+}
+.preset-swatch:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
 .settings-row {
   display: flex;
   flex-wrap: wrap;
@@ -201,7 +372,6 @@ body {
   align-items: center;
   font-size: 12px;
   color: #f1f5f9;
-  margin-top: auto;
 }
 #close-btn {
   border: none;
