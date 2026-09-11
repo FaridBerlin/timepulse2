@@ -33,6 +33,16 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png"
-    ]
+    ],
+    "publisher": "Farid",
+    "homepage": "https://github.com/FaridBerlin/timepulse2",
+    "category": "Utility",
+    "shortDescription": "A big, always-readable desktop clock, stopwatch and timer",
+    "longDescription": "Timepulse is a large, fully customizable digital clock for the Linux desktop, built to be easy to read from across the room. Pick any color for the digits, choose a solid or fully transparent background, click the clock to reveal a settings panel with a stopwatch and countdown timer, and optionally pin the window always-on-top over every other app.",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "deb/timepulse2.desktop"
+      }
+    }
   }
 }

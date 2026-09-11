@@ -5,6 +5,7 @@ name: timepulse2
 # timepulse-clock) - see the notes doc for details. Whatever you pick here
 # must also match `metadata.name`/`apps` below.
 version: '0.1.0'
+title: Timepulse
 summary: A big, always-readable desktop clock, stopwatch and timer
 description: |
   Timepulse is a large, fully customizable digital clock for the desktop -
@@ -12,19 +13,48 @@ description: |
   digits, choose a solid or fully transparent background, click the clock
   to reveal a settings panel with a stopwatch and countdown timer, and
   optionally pin the window always-on-top over every other app.
+contact: mailto:bughunterf@gmail.com
+issues: https://github.com/FaridBerlin/timepulse2/issues
+source-code: https://github.com/FaridBerlin/timepulse2
+website: https://github.com/FaridBerlin/timepulse2
 
 base: core24
-confinement: strict
+# TEMPORARY, DIAGNOSTIC ONLY: devmode disables confinement enforcement
+# entirely, to test whether strict confinement itself is what's blocking
+# input events from reaching the app. A devmode snap can NEVER be
+# released to the Store - once input works here, switch this back to
+# "strict" and we figure out the right interface/permission instead of
+# shipping this as-is.
+confinement: devmode
 grade: stable
 license: MIT
 
-architectures:
-  - build-on: amd64
+platforms:
+  amd64:
 
 apps:
   timepulse2:
     command: usr/bin/timepulse2
     extensions: [gnome]
+    # NOTE: the launcher entry + icon come from snap/gui/ (snapcraft
+    # copies snap/gui/<name>.desktop and its .png straight into the
+    # snap's meta/gui/). We hand-write that file rather than pointing a
+    # `desktop:` key at the one Tauri's bundler generates, because the
+    # generated one has Name=timepulse2 (lowercase) and an empty
+    # Categories= line, and it lives under the gitignored target/ dir
+    # where it can't be corrected in-repo.
+
+    # GDK_BACKEND: belt-and-braces alongside the GDK_BACKEND=x11 set in
+    # main.rs - the gnome extension's own launch wrapper runs before our
+    # binary and may set/clear this itself, so pin it here too.
+    #
+    # NOTE: this is currently the prime suspect for the "renders but
+    # accepts no input" bug (see PROGRESS.md) - forcing XWayland inside a
+    # snap is unusual, and flipping this to `wayland` is the cheapest way
+    # to bisect it. Doing so trades away always-on-top, so it's a
+    # diagnostic, not a fix.
+    environment:
+      GDK_BACKEND: x11
     plugs:
       - desktop
       - desktop-legacy
@@ -49,4 +79,3 @@ parts:
       - usr/bin/timepulse2
       - usr/share/icons
       - usr/share/applications
-      - usr/lib

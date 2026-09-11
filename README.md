@@ -48,6 +48,32 @@ in, and a real always-on-top mode that actually stays on top on Wayland.
 | ![Stopwatch](img/Screenshot%20from%202026-09-11%2014-36-49.png) Stopwatch | ![Timer](img/Screenshot%20from%202026-09-11%2014-37-02.png) Countdown timer |
 | ![Right-click menu](img/Screenshot%20from%202026-09-11%2014-37-32.png) Right-click quick menu (Always on top / Quit / Cancel) | |
 
+## Install
+
+**Ubuntu / Debian (64-bit)** — grab the `.deb` from the
+[latest release](https://github.com/FaridBerlin/timepulse2/releases/latest),
+then install it with:
+
+```bash
+sudo apt install ./timepulse2_0.1.0_amd64.deb
+```
+
+Using `apt install ./file.deb` (rather than `dpkg -i`) pulls in the two
+dependencies automatically — `libwebkit2gtk-4.1-0` and `libgtk-3-0`, both
+of which most Ubuntu 24.04 systems already have.
+
+Then launch **Timepulse** from your applications menu, or run `timepulse2`
+from a terminal.
+
+To uninstall:
+
+```bash
+sudo apt remove timepulse2
+```
+
+On other distributions, build from source — see
+[Build from source](#build-from-source) below.
+
 ## Built with
 
 [Tauri v2](https://v2.tauri.app/): a small Rust shell (`src-tauri/`)
@@ -55,7 +81,9 @@ hosting a plain HTML/CSS/JS frontend (`src/`) — no npm, no frontend
 build step, no framework. All the clock/stopwatch/timer/color-picker
 logic lives in `src/app.js`.
 
-## Prerequisites (Ubuntu/Debian)
+## Build from source
+
+### Prerequisites (Ubuntu/Debian)
 
 If you don't already have Rust — **use the official installer, not the
 `apt`/`snap` rustup packages** (those ship older Rust versions that can
@@ -91,7 +119,7 @@ cargo install tauri-cli --version "^2.0.0" --locked
 (On Fedora/RHEL instead:
 `sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel libxdo-devel && sudo dnf group install "c-development"`)
 
-## Run it
+### Run it in development
 
 From the `timepulse2/` directory:
 
@@ -99,14 +127,14 @@ From the `timepulse2/` directory:
 cargo tauri dev
 ```
 
-## Build a distributable binary
+### Build a distributable package
 
 ```bash
-cargo tauri build
+cargo tauri build --bundles deb
 ```
 
-Packaging for the Ubuntu App Center (Snap Store) is in progress — see
-`snap/snapcraft.yaml`.
+The installable package lands in
+`src-tauri/target/release/bundle/deb/`.
 
 ## Notes on Linux/Wayland
 

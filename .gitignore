@@ -1,4 +1,12 @@
+# Rust / Tauri build output
 /src-tauri/target/
 /src-tauri/gen/
+
+# Private local notes (not pushed)
 /docs
 
+# Snapcraft build output
+/parts/
+/stage/
+/prime/
+*.snap

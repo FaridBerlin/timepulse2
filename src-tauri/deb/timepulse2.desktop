@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Timepulse
+GenericName=Desktop Clock
+Comment=A big, always-readable desktop clock, stopwatch and timer
+Exec={{exec}}
+Icon={{icon}}
+Terminal=false
+Categories=Utility;Clock;
+Keywords=clock;time;stopwatch;timer;countdown;transparent;always-on-top;
+StartupWMClass={{exec}}
