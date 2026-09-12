@@ -58,15 +58,20 @@ body {
 /* Hidden until the window is hovered, so the watch stays clean when idle. */
 #quit-corner {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
+  /* Tucked right into the corner, and smaller than it used to be. The
+     clock's own right-hand padding is only ~13px at the Small size
+     (it scales with --digit-size), so at 22px inset by 6px this button
+     used to reach ~15px into the seconds digits. Large never showed the
+     problem because its padding is ~30px and swallowed the button whole. */
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
   color: #f1f5f9;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
