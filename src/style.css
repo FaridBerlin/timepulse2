@@ -30,10 +30,6 @@ body {
 #app {
   position: relative;
   width: 100%;
-  /* Never let the painted background be narrower than the clock itself,
-     which can happen for a moment while the window is catching up to a
-     size change. */
-  min-width: max-content;
   /* Deliberately NOT height: 100% - that would pin #app to always fill
      whatever the window's current height already is, which means
      appEl.scrollHeight in fitWindowToContent() could only ever measure

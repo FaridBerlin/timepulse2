@@ -41,9 +41,11 @@
   const currentWindow = tauriWindowApi ? tauriWindowApi.getCurrentWindow() : null;
 
   const DEFAULT_TIMER_MS = 5 * 60 * 1000;
-  // Matches minWidth in tauri.conf.json - the settings panel needs at
-  // least this much room even when the clock itself is narrower.
+  // Matches minWidth in tauri.conf.json - the floor for the clock on its
+  // own, with the settings panel closed.
   const MIN_WINDOW_WIDTH = 260;
+  // Ceiling on how wide the settings panel may push the window.
+  const PANEL_MAX_WIDTH = 900;
 
   let mode = "clock";
   let tickTimer = null;
@@ -216,6 +218,27 @@
 
   const appEl = document.getElementById("app");
 
+  // How much width the settings panel actually wants, i.e. enough for its
+  // rows to lay out unwrapped.
+  //
+  // It cannot simply be measured: #controls is width:100%, so asking it
+  // how wide it is only ever reports the window's current width straight
+  // back - and feeding that into the window size would mean the window
+  // could never shrink again (going Huge -> Small with the panel open
+  // would strand a huge window around tiny digits). So let it size to its
+  // own content for the duration of the measurement, then put it back.
+  // Both writes happen inside one frame with no paint in between, so
+  // nothing flickers.
+  function panelNaturalWidth() {
+    const previous = controls.style.width;
+    controls.style.width = "max-content";
+    const natural = controls.scrollWidth;
+    controls.style.width = previous;
+    // Capped so an unusually wide row (or the color popup's preset grid)
+    // can't demand a comically wide window.
+    return Math.min(natural, PANEL_MAX_WIDTH);
+  }
+
   // The settings panel now stacks BELOW the clock instead of covering it,
   // so the OS window itself needs to grow/shrink to fit whichever content
   // is currently showing. appEl.scrollHeight (a plain DOM measurement, in
@@ -237,17 +260,16 @@
       const displayPadX =
         parseFloat(displayStyle.paddingLeft) +
         parseFloat(displayStyle.paddingRight);
-      // Width is driven by the digits alone. The settings panel is
-      // deliberately NOT measured here: it is width:100%, so measuring it
-      // would just report the window's current width back, and the window
-      // could then never shrink again (going Huge -> Small with the panel
-      // open would leave a huge window around tiny digits). The panel
-      // wraps (flex-wrap on .settings-row) and its color popup is fully
-      // fluid, so it renders fine at whatever width the clock needs.
+      // Two things compete for width: the digits, and the settings panel
+      // when it is open. At Large/Huge the digits are the wider of the
+      // two; at Small/Medium the panel is, and sizing to the digits alone
+      // clipped the Timer tab and the opacity slider right off the window.
       const neededWidth = Math.ceil(
         Math.max(
           digits.getBoundingClientRect().width + displayPadX,
-          MIN_WINDOW_WIDTH
+          controls.classList.contains("hidden")
+            ? MIN_WINDOW_WIDTH
+            : panelNaturalWidth()
         )
       );
       await currentWindow.setSize(
