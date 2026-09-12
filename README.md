@@ -152,7 +152,15 @@ The installable package lands in
 
 ## Related project
 
-[`timepulse`](../timepulse) is the original terminal (and Fyne desktop
-GUI) version of this project, written in Go. That one stays as the
-terminal-mode tool; this Tauri version is the actively developed desktop
-clock.
+**Timepulse is not a replacement for
+[timepulse](https://github.com/FaridBerlin/timepulse).** The `2` in this
+repository's name distinguishes the two projects — it is not a version
+number, and this is not a sequel.
+
+- **[timepulse](https://github.com/FaridBerlin/timepulse)** — a clock,
+  stopwatch and timer for the *terminal*, written in Go. Still its own
+  thing.
+- **timepulse2** (this one) — a *graphical* desktop clock for Linux,
+  built with Tauri.
+
+They solve the same problem in two different places, and both are kept.
