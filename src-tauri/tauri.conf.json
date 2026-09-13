@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "timepulse2",
-  "version": "0.1.0",
   "identifier": "com.faridberlin.timepulse2",
   "build": {
     "frontendDist": "../src"
@@ -30,7 +29,9 @@
     "active": true,
     "targets": [
       "deb",
-      "appimage"
+      "appimage",
+      "nsis",
+      "msi"
     ],
     "icon": [
       "icons/32x32.png",
