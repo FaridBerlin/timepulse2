@@ -50,20 +50,52 @@ in, and a real always-on-top mode that actually stays on top on Wayland.
 
 ## Install
 
-**Ubuntu / Debian (64-bit)** — grab the `.deb` from the
+Two ways, depending on whether you want it installed properly or just
+want to run it.
+
+### Option 1 — AppImage (nothing to install)
+
+Download `timepulse2_0.1.0_amd64.AppImage` from the
 [latest release](https://github.com/FaridBerlin/timepulse2/releases/latest),
-then install it with:
+then:
+
+```bash
+chmod +x timepulse2_0.1.0_amd64.AppImage
+./timepulse2_0.1.0_amd64.AppImage
+```
+
+The `chmod` is required — a freshly downloaded AppImage has no execute
+permission, and running it without that step just gives you "Permission
+denied". You can do the same thing in your file manager: right-click →
+Properties → Permissions → tick **Allow executing file as program**, then
+double-click it.
+
+Works on any 64-bit Linux distribution. Nothing is installed anywhere and
+no root access is needed — to uninstall, delete the file.
+
+### Option 2 — .deb package (Ubuntu / Debian)
+
+> **Double-clicking the `.deb` will not install it.** Ubuntu 24.04 opens
+> `.deb` files in Archive Manager, and ships no graphical installer for
+> local `.deb` files at all. This is a change in Ubuntu, not a problem
+> with the package — use the terminal instead.
+
+Download `timepulse2_0.1.0_amd64.deb` from the
+[latest release](https://github.com/FaridBerlin/timepulse2/releases/latest),
+then:
 
 ```bash
 sudo apt install ./timepulse2_0.1.0_amd64.deb
 ```
 
-Using `apt install ./file.deb` (rather than `dpkg -i`) pulls in the two
-dependencies automatically — `libwebkit2gtk-4.1-0` and `libgtk-3-0`, both
-of which most Ubuntu 24.04 systems already have.
+The leading `./` matters. Without it, apt looks for a package by that name
+in the software repositories and fails with a confusing "unable to locate
+package" error. Using `apt` rather than `dpkg -i` also pulls in the two
+dependencies (`libwebkit2gtk-4.1-0`, `libgtk-3-0`) automatically, though
+most Ubuntu 24.04 systems already have both.
 
-Then launch **Timepulse** from your applications menu, or run `timepulse2`
-from a terminal.
+This installs Timepulse properly: it shows up in your applications menu
+with an icon, and `timepulse2` works from any terminal.
 
 To uninstall:
 
@@ -71,7 +103,21 @@ To uninstall:
 sudo apt remove timepulse2
 ```
 
-On other distributions, build from source — see
+### Which one should I use?
+
+|                    | AppImage         | .deb              |
+| ------------------ | ---------------- | ----------------- |
+| Download size      | 76 MB            | 2.8 MB            |
+| Installs anything? | no               | yes               |
+| Applications menu  | no               | yes               |
+| Needs root?        | no               | yes               |
+| Distributions      | any 64-bit Linux | Ubuntu / Debian   |
+
+The AppImage is larger because it carries its own copy of GTK and WebKit
+rather than using the ones on your system. That is exactly what makes it
+run anywhere without installing anything.
+
+On other distributions, you can also build from source — see
 [Build from source](#build-from-source) below.
 
 ## Built with
@@ -130,11 +176,17 @@ cargo tauri dev
 ### Build a distributable package
 
 ```bash
-cargo tauri build --bundles deb
+cargo tauri build
 ```
 
-The installable package lands in
-`src-tauri/target/release/bundle/deb/`.
+`bundle.targets` in `src-tauri/tauri.conf.json` is set to `deb` and
+`appimage`, so this produces both without any extra flags:
+
+- `src-tauri/target/release/bundle/deb/timepulse2_0.1.0_amd64.deb`
+- `src-tauri/target/release/bundle/appimage/timepulse2_0.1.0_amd64.AppImage`
+
+The first AppImage build downloads `linuxdeploy` and `appimagetool`, so it
+needs a network connection and takes noticeably longer than the `.deb`.
 
 ## Notes on Linux/Wayland
 
