@@ -35,13 +35,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Deliberately NOT ubuntu-latest. A binary built against a newer
-          # glibc will not run on older distributions, but the reverse is
-          # fine, so building on the oldest supported runner gives the
-          # widest compatibility. If GitHub retires this runner the job
-          # will fail to start - switch to ubuntu-latest and accept that
-          # the .deb/AppImage then require a newer glibc.
-          - platform: ubuntu-22.04
+          # Pinned to 24.04, not 22.04. The AppImage bundles the whole
+          # GTK/WebKit/glib stack from the build machine. Built on 22.04,
+          # that old stack clashes with the host's newer system libraries
+          # on Ubuntu 26.04 (gvfs "undefined symbol: g_variant_builder_
+          # init_static", then "EGL_BAD_PARAMETER" and an abort). The
+          # .deb is unaffected because it uses the system WebKit.
+          - platform: ubuntu-24.04
             name: Linux
           - platform: windows-latest
             name: Windows
@@ -56,7 +56,7 @@ jobs:
       # Windows 11 and current Windows 10, and Tauri's NSIS installer
       # bootstraps it on anything older.
       - name: Install Linux build dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \

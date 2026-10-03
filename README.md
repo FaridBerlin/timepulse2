@@ -55,6 +55,11 @@ want to run it.
 
 ### Option 1 — AppImage (nothing to install)
 
+> **Ubuntu 26.04 and newer:** the `v0.1.0` AppImage does not start there
+> (it bundles an older GTK/WebKit that clashes with the system's newer
+> libraries and aborts with `EGL_BAD_PARAMETER`). Use the `.deb` below, or
+> a release built after this fix.
+
 Download `timepulse2_0.1.0_amd64.AppImage` from the
 [latest release](https://github.com/FaridBerlin/timepulse2/releases/latest),
 then:
